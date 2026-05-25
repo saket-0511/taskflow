@@ -1,8 +1,8 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import axios from "axios";
 
-export const authOptions: NextAuthOptions = {
+const handler = NextAuth({
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -13,7 +13,6 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          // Sync user with our Flask backend
           await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/sync-user`, {
             email: user.email,
             name: user.name,
@@ -22,13 +21,12 @@ export const authOptions: NextAuthOptions = {
           });
         } catch (error) {
           console.error("Failed to sync user:", error);
-          // Don't block sign-in even if sync fails
         }
         return true;
       }
       return false;
     },
-    async jwt({ token, account, user }) {
+    async jwt({ token, account }) {
       if (account) {
         token.googleId = account.providerAccountId;
         token.accessToken = account.access_token;
@@ -48,7 +46,6 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   secret: process.env.NEXTAUTH_SECRET,
-};
+});
 
-const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
